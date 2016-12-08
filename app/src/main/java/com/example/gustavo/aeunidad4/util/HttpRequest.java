@@ -62,7 +62,12 @@ public class HttpRequest extends AsyncTask<String,Integer,String> {
                 while ((line = r.readLine()) != null) {
                     response.append(line).append('\n');
                 }
-                result=response.toString();
+                if(connection.getResponseCode()==HttpURLConnection.HTTP_OK){
+                    result=response.toString();
+                }else{
+                    result="{\"code\":"+connection.getResponseCode()+", \"message\":"+connection.getResponseMessage()+"}";
+                }
+
             } catch (ProtocolException e) {
                 e.printStackTrace();
                 result=e.getMessage();
@@ -86,7 +91,11 @@ public class HttpRequest extends AsyncTask<String,Integer,String> {
                 while ((line = r.readLine()) != null) {
                     response.append(line).append('\n');
                 }
-                result=response.toString();
+                if(connection.getResponseCode()==HttpURLConnection.HTTP_OK){
+                    result=response.toString();
+                }else{
+                    result="{\"code\":"+connection.getResponseCode()+", \"message\":"+connection.getResponseMessage()+"}";
+                }
             } catch (IOException e) {
                 e.printStackTrace();
                 result=e.toString();

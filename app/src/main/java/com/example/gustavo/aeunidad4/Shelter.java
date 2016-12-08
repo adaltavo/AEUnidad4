@@ -32,8 +32,8 @@ import org.json.JSONObject;
 
 public class Shelter extends AppCompatActivity {
     public final static String DEFAULT_DOMAIN = "http://126d5ffb.ngrok.io";
-    public final static String USER_ID = "34";//33 es de grecia
-    public final static String USER_KEY = "4c96f8324e3ba54a99e78249b95daa30";//"10bab2c711bca9ace3036044b0efcc8a";//
+    public static String USER_ID = "34";//33 es de grecia
+    public static String USER_KEY = "4c96f8324e3ba54a99e78249b95daa30";//"10bab2c711bca9ace3036044b0efcc8a";//
     ListView items;
     ListView itemsCart;
     TabHost tabhost;
@@ -64,7 +64,7 @@ public class Shelter extends AppCompatActivity {
         tab2.setContent(R.id.tab2);
         tabhost.addTab(tab2);
         /////////////////////Obtener la lista de productos
-        HttpRequest fillList = new HttpRequest("get", DEFAULT_DOMAIN + "/AEEcommerce/webresources/product/getProducts?userid=34&apikey=4c96f8324e3ba54a99e78249b95daa30") {
+        HttpRequest fillList = new HttpRequest("get", DEFAULT_DOMAIN + "/AEEcommerce/webresources/product/getProducts/"+USER_ID+"/"+USER_KEY) {
             @Override
             protected void onPostExecute(String s) {
                 items = (ListView) findViewById(R.id.listview1);
@@ -177,7 +177,14 @@ public class Shelter extends AppCompatActivity {
                                 };
                                 delete.execute("userid:"+USER_ID);
                             }
-                        }).show();
+                        })
+                        .setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        })
+                        .show();
             }
         });
     }

@@ -20,6 +20,7 @@ import java.net.URL;
 public class HttpRequest extends AsyncTask<String,Integer,String> {
     private String httpMetohd;
     private String url;
+    private int code;
     //private Thread thread;
 
     public HttpRequest(String httpMetohd, String url){
@@ -55,14 +56,15 @@ public class HttpRequest extends AsyncTask<String,Integer,String> {
                 wr.writeBytes(json.toString());
                 wr.flush();
                 wr.close();
-                BufferedReader r = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                //falta response
-                StringBuilder response = new StringBuilder();
-                String line;
-                while ((line = r.readLine()) != null) {
-                    response.append(line).append('\n');
-                }
+
                 if(connection.getResponseCode()==HttpURLConnection.HTTP_OK){
+                    BufferedReader r = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                    //falta response
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = r.readLine()) != null) {
+                        response.append(line).append('\n');
+                    }
                     result=response.toString();
                 }else{
                     result="{\"code\":"+connection.getResponseCode()+", \"message\":"+connection.getResponseMessage()+"}";
@@ -84,18 +86,19 @@ public class HttpRequest extends AsyncTask<String,Integer,String> {
                 connection.setRequestMethod(httpMetohd.toUpperCase());
                 //connection.setRequestProperty("Content-Type", "application/json");
                 connection.connect();
-                BufferedReader r = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                //falta response
-                StringBuilder response = new StringBuilder();
-                String line;
-                while ((line = r.readLine()) != null) {
-                    response.append(line).append('\n');
-                }
                 if(connection.getResponseCode()==HttpURLConnection.HTTP_OK){
+                    BufferedReader r = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                    //falta response
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = r.readLine()) != null) {
+                        response.append(line).append('\n');
+                    }
                     result=response.toString();
                 }else{
                     result="{\"code\":"+connection.getResponseCode()+", \"message\":"+connection.getResponseMessage()+"}";
                 }
+
             } catch (IOException e) {
                 e.printStackTrace();
                 result=e.toString();
@@ -108,4 +111,7 @@ public class HttpRequest extends AsyncTask<String,Integer,String> {
         return result;
     }
 
+    public int getCode() {
+        return code;
+    }
 }

@@ -3,6 +3,7 @@ package com.example.gustavo.aeunidad4;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.support.v4.content.ContextCompat;
@@ -10,10 +11,14 @@ import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -30,15 +35,23 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.example.gustavo.aeunidad4.util.ProductDetailAlertDialogCart;
+import com.example.gustavo.aeunidad4.util.User;
+import com.stripe.android.*;
+import com.stripe.android.model.Card;
+import com.stripe.android.model.Token;
+import com.stripe.exception.AuthenticationException;
+
 public class Shelter extends AppCompatActivity {
     public final static String DEFAULT_DOMAIN = "http://126d5ffb.ngrok.io";
     public static String USER_ID = "34";//33 es de grecia
     public static String USER_KEY = "4c96f8324e3ba54a99e78249b95daa30";//"10bab2c711bca9ace3036044b0efcc8a";//
+    public static String USER_NAME = "34";//33 es de grecia
     ListView items;
     ListView itemsCart;
     TabHost tabhost;
     TextView total;
-    Button empty;
+    Button empty, checkout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,22 +60,47 @@ public class Shelter extends AppCompatActivity {
         init();
         events();
     }
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case R.id.session_close:
+                User user=new User(Shelter.this);
+                SQLiteDatabase db=user.getWritableDatabase();
+                db.execSQL("delete from user;");
+                startActivity(new Intent(Shelter.this,MainActivity.class));
+                finish();
+                return true;
+
+        }
+        return false;
+    }
 
     private void init() {
+        //Inicializo elementos views
         tabhost = (TabHost) findViewById(R.id.tabhost);
         tabhost.setup();
         total = (TextView) findViewById(R.id.textViewTotal);
         empty = (Button) findViewById(R.id.ButtonVaciarCarrito);
+        checkout = (Button) findViewById(R.id.ButtonComprar);
 
+        //Configuro la primera pestaña
         TabHost.TabSpec tab1 = tabhost.newTabSpec("First Tab");
         tab1.setIndicator("", ResourcesCompat.getDrawable(getResources(), R.drawable.goal, null));
         tab1.setContent(R.id.tab1);
         tabhost.addTab(tab1);
-
+        //Configuro la segunda pestaña
         TabHost.TabSpec tab2 = tabhost.newTabSpec("Second Tab");
         tab2.setIndicator("", ContextCompat.getDrawable(this, R.drawable.cart));
         tab2.setContent(R.id.tab2);
         tabhost.addTab(tab2);
+
+        setTitle(getTitle()+". Bienvenido, "+USER_NAME);
         /////////////////////Obtener la lista de productos
         HttpRequest fillList = new HttpRequest("get", DEFAULT_DOMAIN + "/AEEcommerce/webresources/product/getProducts/"+USER_ID+"/"+USER_KEY) {
             @Override
@@ -70,15 +108,11 @@ public class Shelter extends AppCompatActivity {
                 items = (ListView) findViewById(R.id.listview1);
                 CustomListAdapter adapter = null;
                 try {
-                    new AlertDialog.Builder(Shelter.this).setMessage(s).show();
-                    adapter = new CustomListAdapter(Shelter.this, new JSONArray(s));
+                   updateProducts(new JSONArray(s));
                 } catch (JSONException e) {
                     new AlertDialog.Builder(Shelter.this).setMessage(e.toString()).show();
                     e.printStackTrace();
                 }
-                ArrayAdapter as = new ArrayAdapter<String>(Shelter.this, android.R.layout.simple_spinner_dropdown_item);
-                as.add("asdsaddsadsa");
-                items.setAdapter(adapter);
                 items.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                     @Override
                     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -106,14 +140,38 @@ public class Shelter extends AppCompatActivity {
                 itemsCart = (ListView) findViewById(R.id.listview2);
                 try {
                     updateCart(new JSONArray(s));
+
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
+                itemsCart.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                        String name = ((TextView) view.findViewById(R.id.textViewNameCart)).getText().toString();
+                        String prize = ((TextView) view.findViewById(R.id.textViewPrizeCart)).getText().toString();
+                        String stock = ((TextView) view.findViewById(R.id.textViewQuantity)).getText().toString();
+                        String brand = ((TextView) view.findViewById(R.id.textViewBrand)).getText().toString();
+                        String imagename = (String) ((ImageView) view.findViewById(R.id.imageViewCart)).getTag();
+                        //new AlertDialog.Builder(Shelter.this).setMessage(imagename+">>>>>>dsadd").show();
+                        ProductDetailAlertDialogCart dialog = new ProductDetailAlertDialogCart(Shelter.this, name, prize, brand, stock,
+                                imagename,(String)((TextView) view.findViewById(R.id.textViewNameCart)).getTag());
+
+                        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                        dialog.show();
+                    }
+                });
             }
 
         };
         fillList.execute();
 
+    }
+
+    public void updateProducts(JSONArray json){
+        CustomListAdapter adapter = null;
+        new AlertDialog.Builder(Shelter.this).setMessage(json.toString()).show();
+        adapter = new CustomListAdapter(Shelter.this, json);
+        items.setAdapter(adapter);
     }
 
     public void updateCart(JSONArray json){
@@ -123,6 +181,9 @@ public class Shelter extends AppCompatActivity {
             Double temp=0.0;///Obtener el total (Puede ser mejor definitivamente)
             new AlertDialog.Builder(Shelter.this).setMessage(json.toString()).show();
             if (!json.isNull(0)) {
+                itemsCart.setEnabled(true);
+                empty.setEnabled(true);
+                checkout.setEnabled(true);
                 for (int i = 0; i < json.length(); i++) {
                     temp+=json.getJSONObject(i).getDouble("priceperitem")*json.getJSONObject(i).getInt("quantity");
                 }
@@ -130,6 +191,9 @@ public class Shelter extends AppCompatActivity {
                 try {
                     adapter = new CustomListAdapterCart(Shelter.this, new JSONArray("[{\"brand\":\"\",\"image\":\"product.png\",\"currency\":" +
                             "\"\",\"product\":\"No hay productos\",\"user\":\"gustavo\",\"quantity\":0,\"priceperitem\":0.0}]"));
+                    itemsCart.setEnabled(false);
+                    empty.setEnabled(false);
+                    checkout.setEnabled(false);
                 } catch (JSONException e1) {
                     e1.printStackTrace();
                 }
@@ -139,6 +203,9 @@ public class Shelter extends AppCompatActivity {
             new AlertDialog.Builder(Shelter.this).setMessage(e.toString()).show();
             e.printStackTrace();
             try {
+                itemsCart.setEnabled(false);
+                empty.setEnabled(false);
+                checkout.setEnabled(false);
                 adapter = new CustomListAdapterCart(Shelter.this, new JSONArray("[{\"brand\":\"\",\"image\":\"product.png\",\"currency\":" +
                         "\"\",\"product\":\"No hay productos\",\"user\":\"gustavo\",\"quantity\":0,\"priceperitem\":0.0}]"));
             } catch (JSONException e1) {
@@ -176,6 +243,95 @@ public class Shelter extends AppCompatActivity {
                                     }
                                 };
                                 delete.execute("userid:"+USER_ID);
+                            }
+                        })
+                        .setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        })
+                        .show();
+            }
+        });
+        //////////////////////////////////////////////////////Hacer la compra al presionar el boton comprar
+        checkout.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {//evento onclick
+                final EditText tarjeta=new EditText(Shelter.this);
+                new AlertDialog.Builder(Shelter.this).setTitle("Confirm")//Mostramos un alert dialog de confirmación con un número de tarjeta
+                        .setMessage("¿Seguro que desea concretar su compra?")
+                        .setView(tarjeta)
+                        .setPositiveButton("Si awebo", new DialogInterface.OnClickListener() {
+
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {     //Si el usuario acepta (da clic en aceptar)
+                                Card card = new Card(tarjeta.getText().toString(), 12, 2017, "123");
+                                Stripe stripe = null;
+                                try {
+                                    stripe = new Stripe("pk_test_9PEolhrHd4neqTqmO4awlxNw");
+                                } catch (AuthenticationException e) {
+                                    e.printStackTrace();
+                                }
+                                stripe.createToken(//se manda la peticion a Stripe
+                                        card,
+                                        new TokenCallback() {
+                                            public void onSuccess(Token token) {//Si todo sale bien se manda la peticion al webservice de checkout
+                                                HttpRequest buy = new HttpRequest("post", DEFAULT_DOMAIN+"/AEEcommerce/webresources/user/checkout"){
+                                                    @Override
+                                                    protected void onPostExecute(String s) {
+                                                        try {
+                                                            if(s.contains("\"code\":404")){
+                                                                new AlertDialog.Builder(Shelter.this).setMessage("Servicio no disponible").show();
+                                                            }
+                                                            else  if(s.contains("\"code\":401")){
+                                                                new AlertDialog.Builder(Shelter.this).setMessage("Error de autenticación").show();
+                                                            }
+                                                            if(s.contains("\"code\":400")){
+                                                                new AlertDialog.Builder(Shelter.this).setMessage("Datos no válidos").show();
+                                                            }
+                                                            if(s.contains("\"code\":500")){
+                                                                new AlertDialog.Builder(Shelter.this).setMessage("Error del servidor, intentelo de nuevo").show();
+                                                            }
+                                                            else{
+                                                                new AlertDialog.Builder(Shelter.this).setMessage("venta realizada con éxito")
+                                                                        .setTitle("Aviso!")
+                                                                        .show();
+                                                                updateCart(new JSONArray());
+                                                                HttpRequest fillList = new HttpRequest("get", DEFAULT_DOMAIN + "/AEEcommerce/webresources/product/getProducts/"+USER_ID+"/"+USER_KEY){
+                                                                    @Override
+                                                                    protected void onPostExecute(String s) {
+                                                                        try {
+                                                                            updateProducts(new JSONArray(s));
+                                                                        } catch (JSONException e) {
+                                                                            e.printStackTrace();
+                                                                        }
+                                                                    }
+                                                                };
+                                                                fillList.execute();
+
+                                                            }
+
+                                                            updateCart(new JSONArray(""));
+                                                        } catch (JSONException e) {
+
+                                                            e.printStackTrace();
+                                                            new AlertDialog.Builder(Shelter.this).setMessage(s).show();
+                                                        }
+                                                    }
+                                                };
+                                                buy.execute("userid:"+USER_ID,"apikey:"+USER_KEY,"token:"+token.getId());
+                                            }
+                                            public void onError(Exception error) {
+                                                // Show localized error message
+                                                Toast.makeText(Shelter.this,
+                                                        error.toString(),
+                                                        Toast.LENGTH_LONG
+                                                ).show();
+                                            }
+                                        }
+                                );
+
                             }
                         })
                         .setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {

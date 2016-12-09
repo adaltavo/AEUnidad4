@@ -67,7 +67,7 @@ public class HttpRequest extends AsyncTask<String,Integer,String> {
                     }
                     result=response.toString();
                 }else{
-                    result="{\"code\":"+connection.getResponseCode()+", \"message\":"+connection.getResponseMessage()+"}";
+                    result="{\"code\":"+connection.getResponseCode()+", \"message\":\""+connection.getResponseMessage()+"\"}";
                 }
 
             } catch (ProtocolException e) {
@@ -96,7 +96,7 @@ public class HttpRequest extends AsyncTask<String,Integer,String> {
                     }
                     result=response.toString();
                 }else{
-                    result="{\"code\":"+connection.getResponseCode()+", \"message\":"+connection.getResponseMessage()+"}";
+                    result="{\"code\":"+connection.getResponseCode()+", \"message\":\""+connection.getResponseMessage()+"\"}";
                 }
 
             } catch (IOException e) {

@@ -54,7 +54,7 @@ public class CustomListAdapterCart extends ArrayAdapter {
             Picasso.with(context).load(Shelter.DEFAULT_DOMAIN+"/AEEcommerce/ProductImage?image="+item.getString("image")).into(image);
             image.setTag(item.getString("image"));
             //textViewPrize.setTag(item.getString("priceperitem"));
-            //textViewName.setTag(item.getString("productid"));
+            textViewName.setTag(item.getString("productid"));
             //parent.setTag((Double) parent.getTag()+ Float.parseFloat(item.getString("priceperitem")));
         } catch (JSONException e) {
             e.printStackTrace();

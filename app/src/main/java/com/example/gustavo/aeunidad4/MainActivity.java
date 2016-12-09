@@ -2,6 +2,7 @@ package com.example.gustavo.aeunidad4;
 
 import android.content.ContentValues;
 import android.content.Intent;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.media.Image;
 import android.support.v7.app.AlertDialog;
@@ -38,9 +39,16 @@ public class MainActivity extends AppCompatActivity {
 
 
         final User basededatos = new User(this);//
+        final SQLiteDatabase db = basededatos.getWritableDatabase();
 
-
-
+        Cursor c=db.rawQuery("select userid, username, apikey from user", null);
+        if (c.moveToFirst()){
+            Shelter.USER_ID = c.getString(0);
+            Shelter.USER_KEY = c.getString(2);
+            Shelter.USER_NAME = c.getString(1);
+            startActivity(new Intent(MainActivity.this,Shelter.class));
+            finish();
+        }
         boton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -54,14 +62,14 @@ public class MainActivity extends AppCompatActivity {
                 HttpRequest request = new HttpRequest("get",Shelter.DEFAULT_DOMAIN + "/AEEcommerce/webresources/user/login/" + usuario +"/"+ password ){
                     @Override
                     protected void onPostExecute(String s) {
-
+                        JSONObject json;
                         try {
 
-                            JSONObject json = new JSONObject(s);
+                            json = new JSONObject(s);
                             Shelter.USER_ID = json.getString("userid");
                             Shelter.USER_KEY = json.getString("apikey");
+                            Shelter.USER_NAME = json.getString("username");
 
-                            SQLiteDatabase db = basededatos.getWritableDatabase();
                             int useri= json.getInt("userid");
                             String username = json.getString("username");
                             String pass = json.getString("password");
@@ -100,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
                             values.put("cellphone",cellphone);
                             values.put("companyid",companyid);
                             values.put("roleid", roleid);
-                            values.put("gende",gender);
+                            values.put("gender",gender);
                             values.put("apikey",apikey);
 
                             db.insert("user", null, values);
@@ -111,7 +119,12 @@ public class MainActivity extends AppCompatActivity {
 
                         } catch (JSONException e) {
                             e.printStackTrace();
-                            new AlertDialog.Builder(MainActivity.this).setMessage(s).show();
+                            if(s.contains("\"code\":401"))
+                                new AlertDialog.Builder(MainActivity.this).setMessage("Usuario no válido").setTitle("Error").show();
+                            else   if(s.contains("\"code\":404"))
+                                new AlertDialog.Builder(MainActivity.this).setMessage("No campos vacíos").setTitle("Error").show();
+                            else
+                                new AlertDialog.Builder(MainActivity.this).setMessage(s).show();
 
                         }
 

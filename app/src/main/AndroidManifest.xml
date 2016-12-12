@@ -17,7 +17,7 @@
         </activity>
         <activity
             android:name=".Shelter"
-            android:label="Galeria" />
+            android:label="AE" />
     </application>
 
 </manifest>

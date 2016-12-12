@@ -1,6 +1,7 @@
 package com.example.gustavo.aeunidad4;
 
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
@@ -53,6 +54,7 @@ public class Shelter extends AppCompatActivity {
     TabHost tabhost;
     TextView total;
     Button empty, checkout;
+    ProgressDialog progress;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,6 +92,13 @@ public class Shelter extends AppCompatActivity {
         total = (TextView) findViewById(R.id.textViewTotal);
         empty = (Button) findViewById(R.id.ButtonVaciarCarrito);
         checkout = (Button) findViewById(R.id.ButtonComprar);
+        progress=new ProgressDialog(this);
+        progress.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        progress.setIndeterminate(true);
+        progress.setCancelable(false);
+        progress.setCanceledOnTouchOutside(false);
+        progress.setTitle("Espere");
+        progress.setMessage("cargando...");
 
         //Configuro la primera pestaña
         TabHost.TabSpec tab1 = tabhost.newTabSpec("First Tab");
@@ -105,6 +114,11 @@ public class Shelter extends AppCompatActivity {
         setTitle(getTitle() + ". Bienvenido, " + USER_NAME);
         /////////////////////Obtener la lista de productos
         HttpRequest fillList = new HttpRequest("get", DEFAULT_DOMAIN + "/AEEcommerce/webresources/product/getProducts/" + USER_ID + "/" + USER_KEY) {
+            @Override
+            protected void onPreExecute() {
+                progress.show();
+            }
+
             @Override
             protected void onPostExecute(String s) {
                 items = (ListView) findViewById(R.id.listview1);
@@ -131,11 +145,16 @@ public class Shelter extends AppCompatActivity {
                         dialog.show();
                     }
                 });
+                progress.dismiss();
             }
         };
         fillList.execute();
         /////////////////////Obtener la lista del carrito
         fillList = new HttpRequest("get", Shelter.DEFAULT_DOMAIN + "/AEEcommerce/webresources/user/getCart/" + Shelter.USER_ID + "/" + Shelter.USER_KEY) {
+            @Override
+            protected void onPreExecute() {
+                progress.show();
+            }
 
             @Override
             protected void onPostExecute(String s) {
@@ -144,6 +163,20 @@ public class Shelter extends AppCompatActivity {
                     updateCart(new JSONArray(s));
 
                 } catch (JSONException e) {
+                    if (s.contains("\"code\":404")) {
+                        new AlertDialog.Builder(Shelter.this).setMessage("Servicio no disponible").show();
+                    }else if (s.contains("\"code\":401")) {
+                        new AlertDialog.Builder(Shelter.this).setMessage("Error de autenticación").show();
+                    }
+                    else if (s.contains("\"code\":400")) {
+                        new AlertDialog.Builder(Shelter.this).setMessage("Datos no válidos, revise el stock disponible").show();
+                    }
+                    else if (s.contains("\"code\":500")) {
+                        new AlertDialog.Builder(Shelter.this).setMessage("Error del servidor, intentelo de nuevo").show();
+                    }
+                    else if (s.contains("\"code\":403")) {
+                        new AlertDialog.Builder(Shelter.this).setMessage("Error de autenticación, cierre sesión e intentelo de nuevo").show();
+                    }
                     e.printStackTrace();
                 }
                 itemsCart.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -162,6 +195,7 @@ public class Shelter extends AppCompatActivity {
                         dialog.show();
                     }
                 });
+                progress.dismiss();
             }
 
         };
@@ -284,6 +318,12 @@ public class Shelter extends AppCompatActivity {
                                             public void onSuccess(Token token) {//Si todo sale bien se manda la peticion al webservice de checkout
                                                 HttpRequest buy = new HttpRequest("post", DEFAULT_DOMAIN + "/AEEcommerce/webresources/user/checkout") {
                                                     @Override
+                                                    protected void onPreExecute() {
+                                                        progress.setMessage("procesando pago...");
+                                                        progress.show();
+                                                    }
+
+                                                    @Override
                                                     protected void onPostExecute(String s) {
                                                         try {
                                                             if (s.contains("\"code\":404")) {
@@ -321,6 +361,7 @@ public class Shelter extends AppCompatActivity {
                                                             e.printStackTrace();
                                                             new AlertDialog.Builder(Shelter.this).setMessage(s).show();
                                                         }
+                                                        progress.dismiss();
                                                     }
                                                 };
                                                 buy.execute("userid:" + USER_ID, "apikey:" + USER_KEY, "token:" + token.getId());

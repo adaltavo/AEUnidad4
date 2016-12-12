@@ -1,5 +1,6 @@
 package com.example.gustavo.aeunidad4;
 
+import android.app.ProgressDialog;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
@@ -25,18 +26,26 @@ public class MainActivity extends AppCompatActivity {
     ImageView imagen;
     EditText user, pass;
     Button boton;
+    ProgressDialog progress;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         //startActivity(new Intent(this,Shelter.class));
-
+        setTitle("Hola :), ¿Quién eres?");
+        progress= new ProgressDialog(this);
         imagen = (ImageView) findViewById(R.id.imageView);
         user = (EditText) findViewById(R.id.editText);
         pass = (EditText) findViewById(R.id.editText2);
         boton = (Button) findViewById(R.id.button);
 
+        progress.setTitle("Log in");
+        progress.setMessage("Verificando usuario..");
+        progress.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        progress.setIndeterminate(true);
+        progress.setCancelable(false);
+        progress.setCanceledOnTouchOutside(false);
 
         final User basededatos = new User(this);//
         final SQLiteDatabase db = basededatos.getWritableDatabase();
@@ -52,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
         boton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                progress.show();
                  usuario = user.getText().toString();
                  password = pass.getText().toString();
                 /* El metodo getText() obtiene el dato escrito con el metodo toString()
@@ -128,7 +138,7 @@ public class MainActivity extends AppCompatActivity {
 
                         }
 
-
+                        progress.dismiss();
                     }
                 } ;
                 request.execute();
